@@ -1,0 +1,315 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+using namespace std;
+const string databaseFile = "user_data.txt"; // Database file name
+const string adminDatabaseFile = "admin.txt";
+
+// Structure to store user details
+struct User_Data
+{
+    string User_Name, Password;
+    float Account_Balance = 0.00;
+};
+
+// Function to validate username and password
+bool validateUser(const User& user, const string& username, const string& password)
+{
+    return (user.username == username && user.password == password);
+}
+
+// Function to find a user in the database
+User findUser(const string& username)
+{
+    ifstream file(databaseFile);
+    User user;
+
+    while (file >> user.username >> user.password >> user.balance)
+    {
+        if (user.username == username)
+        {
+            file.close();
+            return user;
+        }
+    }
+    file.close();
+    return User(); // Return an empty User if not found
+}
+
+// Function to update the user database
+void updateUser(const User& user)
+{
+    ifstream fileIn(databaseFile);
+    ofstream fileOut("temp.txt");
+    User tempUser;
+
+    while (fileIn >> tempUser.username >> tempUser.password >> tempUser.balance) {
+        if (tempUser.username == user.username)
+        {
+            fileOut << user.username << " " << user.password << " " << user.balance << endl;
+        }
+        else
+        {
+            fileOut << tempUser.username << " " << tempUser.password << " " << tempUser.balance << endl;
+        }
+    }
+    fileIn.close();
+    fileOut.close();
+
+    remove(databaseFile.c_str());
+    rename("temp.txt", databaseFile.c_str());
+}
+
+// Function to deposit money for a user
+void depositMoney(User& user, float amount)
+{
+    user.Account_Balance += amount;
+    updateUser(user);
+    cout << "Deposit successful. New balance: " << user.Account_Balance << endl;
+}
+
+// Function to register a new user
+void registerUser()
+{
+    string username, password;
+    cout << "\n-------------------------------------------------------------------------------------------------------------\n" << endl;
+    cout << "User Account Registration Page: \n";
+    cout << "Please Enter username: ";
+    cin >> username;
+
+    // Check if the username already exists
+    if (findUser(username).username == username)
+    {
+        cout << "Username already exists. Please choose a different username." << endl;
+        return;
+    }
+    cout << "Please Enter password: ";
+    cin >> password;
+
+    ofstream file(databaseFile, ios::app);
+    file << username << " " << password << " 0.00" << endl; // Set initial balance to 0.00
+    file.close();
+
+    cout << "\nNew User's Account has been registered successfully." << endl;
+}
+
+// Function to change admin password
+void changeAdminPassword()
+{
+    string username, password, newPassword;
+
+
+    cout << "Enter admin username: ";
+    cin >> username;
+    cout << "Enter current password: ";
+    cin >> password;
+
+    User admin = findUser(username);
+
+    if (validateUser(admin, username, password))
+    {
+        cout << "Enter new password: ";
+        cin >> newPassword;
+
+        admin.password = newPassword;
+        updateUser(admin);
+
+        cout << "Admin Password changed successfully." << endl;
+    }
+    else
+    {
+        cout << "You entered Invalid username or password!" << endl;
+    }
+}
+
+// Function to withdraw cash for a user
+void withdrawCash(const User& user, double amount)
+{
+    if (amount > user.Account_Balance)
+    {
+        cout << "Insufficient funds. Cannot withdraw." << endl;
+    }
+    else {
+        User updatedUser = user;
+        updatedUser.balance -= amount;
+        updateUser(updatedUser);
+        cout << "Withdrawal successful. New balance: " << updatedUser.balance << endl;
+    }
+}
+
+//This is a function to write all the user's data to the usersDB.txt file
+void Write_Normal_User_Data(const User_Data& user)
+{
+    ofstream file("user_data.txt", ios::app);
+    if (file.is_open())
+    {
+        file << user.User_Name << " " << user.Password << user.Account_Balance << endl;
+        file.close();
+        cout << "\nYour Username and Password have been successfully reset!" << endl;
+    }
+    else
+    {
+        cout << "\nError: Unable to open file to store the user's data!" << endl;
+    }
+}
+
+bool Read_User_Data(const string& User_Name, const string& Password, User_Data& user)
+{
+    ifstream file("user_data.txt");
+    if (file.is_open())
+    {
+        string Stored_User_Name, Stored_Password;
+        float Stored_Account_Balance;
+
+        while (file >> Stored_User_Name >> Stored_Password >> Stored_Account_Balance)
+        {
+            if (Stored_User_Name == User_Name && Stored_Password == Password)
+            {
+                user.User_Name = Stored_User_Name;
+                user.Password = Stored_Password;
+                user.Account_Balance = Stored_Account_Balance;
+                file.close();
+                return true;
+            }
+        }
+        file.close();
+    }
+    return false;
+}
+
+int main()
+{
+    string Adminstrator_User, Normal_User, New_Password, Confirm_Password, New_User_Name, Confirm_New_User_Name;
+    string User_Name = "newUser", Password = "new@User123", Admin_User_Name = "Admin", Admin_Password = "Admin123";
+    int User_Type, Banking_Options, Reset_Option, Admin_Option;
+    int Max_Num_Of_Trials = 3;
+    int Num_Of_Trials = 0;
+    float Withdrawal_Amount;
+
+    User_Data user; //This is to create a User_Data Struct to hold user details.
+
+    cout << "\t\t\t\t\t**SMOCHA E-CASH**\n\nWelcome To SMOCHA E-Cash Services\n";
+    cout << "Please select the type user from the list of users below by selecting either 1 or 2" << endl << " 1. Normal User Login. " << endl << " 2. Administrator User Login." << endl;
+    cout << "\nEnter selection: ";
+    cin >> User_Type;
+
+    switch (User_Type)
+    {
+    case 1:
+        cout << "\n-------------------------------------------------------------------------------------------------------------\n" << endl << "Normal User Login Page:" << endl;
+        cout << "You have a maximum of 3 attempts to log into your account. Otherwise, we will temporarily block your account!\n" << endl;
+
+        while (Num_Of_Trials < Max_Num_Of_Trials) //To loop the chance to enter the user details 3 times.
+        {
+            cout << "Enter Your account Username: ";
+            cin >> User_Name;
+
+            cout << "Enter your account password: ";
+            cin >> Password;
+
+            //Checking if the ntered User_Name and Password are equal to "newUser" and "new@User123" respectively.
+            if (User_Name == "newUser" && Password == "new@User123")
+            {
+                cout << "\n-------------------------------------------------------------------------------------------------------------\n";
+                cout << endl << "Welcome " << user.User_Name << "." << endl << "\nWhich of the following options do you wish to proceed to?" << endl << " 1. Withdraw cash.\n 2. Check Account Balance.\n 3. Change default details." << endl;
+                cout << "\nEnter selection: ";
+                cin >> Banking_Options;
+
+                switch (Banking_Options)
+                {
+                case 1:
+                    cout << "\n-------------------------------------------------------------------------------------------------------------\n";
+                    cout << "How much do you wish to withdraw: ";
+                    cin >> Withdrawal_Amount;
+
+                    if (Withdrawal_Amount <= user.Account_Balance)
+                    {
+                        user.Account_Balance -= Withdrawal_Amount;
+                        Write_Normal_User_Data(user); //This is there inorder to update the user's account balance in the database file.
+                        cout << "\nYou have successfully withdrawn " << Withdrawal_Amount << ". Your new Account Balance is " << user.Account_Balance << endl;
+                    }
+                    else
+                    {
+                        cout << "\nSorry, but you have insufficient funds to make a withdrawal of " << Withdrawal_Amount << "." << endl;
+                    }
+                    break;
+
+                case 2:
+                    cout << "\n-------------------------------------------------------------------------------------------------------------\n";
+                    cout << "Your current Account Balance is " << user.Account_Balance << "." << endl;
+                    break;
+
+                case 3:
+                    cout << "\n-------------------------------------------------------------------------------------------------------------\n";
+                    cout << "Do you wish to Change your Default details? (Enter '1' for yes and '2' for no): ";
+                    cin >> Reset_Option;
+
+                    switch (Reset_Option)
+                    {
+                    case 1:
+
+                        cout << "\nPlease Enter Your New Account Username: " << endl;
+                        cin >> New_User_Name;
+
+                        cout << "\nPlease Confirm Your Account Username: " << endl;
+                        cin >> Confirm_New_User_Name;
+
+                        cout << "\nPlease Enter Your New Password: " << endl;
+                        cin >> New_Password;
+
+                        cout << "\nPlease Confirm Your New Password: " << endl;
+                        cin >> Confirm_Password;
+
+                        if (New_User_Name == Confirm_New_User_Name && New_Password == Confirm_Password)
+                        {
+                            //Updating and reseting default details.
+                            user.User_Name = New_User_Name;
+                            user.Password = New_Password;
+                            Write_Normal_User_Data(user); //This is there to Update the user's password in the database file.
+                        }
+                        else
+                        {
+                            cout << "\nDefault details reset has failed. Your New detailsou Do Not Match!" << endl;
+                        }
+                        break;
+
+                    case 2:
+                        cout << "\nYou have chosen not to reset your password!\n\t\tThank you for Using SMOCHA E-Cash services." << endl;
+                        break;
+
+                    default:
+                        cout << "Invalid option!" << endl;
+                        break;
+                    }
+                    break;
+
+                default:
+                    cout << "Invalid option!" << endl;
+                    break;
+                }
+                break;
+            }
+            else
+            {
+                cout << "You have entered the wrong normal user login details!\n" << endl;
+                Num_Of_Trials++;
+            }
+        }
+        if (Num_Of_Trials >= Max_Num_Of_Trials)
+        {
+            cout << "\n-------------------------------------------------------------------------------------------------------------\n" << endl;
+            cout << "You have reached your maximum login attempts. Your Account has been Temporarily blocked.\nPlease Visit the SMOCHA offices to get your Account Restored!\n\n-------------------------------------------------------------------------------------------------------------\n" << endl;
+            cout << "\t\t\t**Thank you for using SMOCHA E - CASH services**\n" << endl;
+
+        }
+        break;
+    case 2:
+
+    default:
+
+        break;
+
+    }
+}
+return 0;
+}
